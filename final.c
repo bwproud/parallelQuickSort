@@ -235,7 +235,7 @@ void parallelPrefixSum(int p, int r){
         int k = log_2(len);
         for(h=1; h<k+1;h++){
                 shift = 1<<h;
-                #pragma omp parallel for schedule(static) private(j)
+//                #pragma omp parallel for schedule(static) private(j)
                 for(j=1; j<(len/shift)+1;j++){
                         lt[p+j*shift-1]+=lt[p+j*shift-(shift/2)-1];
                         gt[p+j*shift-1]+=gt[p+j*shift-(shift/2)-1];
@@ -244,7 +244,7 @@ void parallelPrefixSum(int p, int r){
 
         for(h=k; h>-1;h--){
                 shift = 1<<h;
-                #pragma omp parallel for schedule(static) private(j)
+  //              #pragma omp parallel for schedule(static) private(j)
                 for(j=2; j<(len/shift)+1;j++){
                         if(j%2==1){
                                 lt[p+j*shift-1]+=lt[p+j*shift-shift-1];
@@ -259,17 +259,17 @@ int parallelPartition(int p, int r){
   int i,j;
   double temp;
 
-  printf("%d: before first parallel region\n",omp_get_thread_num());
-  #pragma omp parallel
-  {
-    #pragma omp for schedule(static) private(i)
+//  printf("%d: before first parallel region\n",omp_get_thread_num());
+//  #pragma omp parallel
+//  {
+  //  #pragma omp for schedule(static) private(i)
     for(i=p; i<r+1; i++){
       lt[i]=0;
       gt[i]=0;
       local[i]=N[i];
     }
 
-    #pragma omp for schedule(static) private(i)
+  //  #pragma omp for schedule(static) private(i)
     for(i = p; i <r; i++){
         if(N[i]<key){
             lt[i]=1;
@@ -279,7 +279,7 @@ int parallelPartition(int p, int r){
             gt[i]=1;
         }
     }
-  }
+ // }
 
 //  printf("before less than: [");
   // for(i=p; i<r+1; i++){
@@ -293,13 +293,13 @@ int parallelPartition(int p, int r){
   // printf("]\n");
   
   
-  printf("%d: before prefix sum\n",omp_get_thread_num());
+ // printf("%d: before prefix sum\n",omp_get_thread_num());
 
   //parallelPrefixSum(p,r);
   prefixSum(lt, p,r);
   prefixSum(gt,p,r);
 
-  printf("%d: after prefix sum\n",omp_get_thread_num());
+ // printf("%d: after prefix sum\n",omp_get_thread_num());
   //prefixSum(lt, gt, p, r);
 
   // printf("after less than: [");
@@ -316,9 +316,9 @@ int parallelPartition(int p, int r){
   int pivot = lt[r];
   N[pivot+p]=key;
 
-  #pragma omp parallel
-  {
-    #pragma omp for schedule(static) private(i)
+//  #pragma omp parallel
+//  {
+  //  #pragma omp for schedule(static) private(i)
     for(i=p; i<r; i++){
         if(local[i]<key){
             int index = p+lt[i]-1;
@@ -328,9 +328,9 @@ int parallelPartition(int p, int r){
             N[index]=local[i];
         }    
     }
-  }  
+ // }  
 
-  printf("%d: after second parallel\n", omp_get_thread_num());
+ // printf("%d: after second parallel\n", omp_get_thread_num());
   return pivot+p;
 }
 
@@ -341,14 +341,16 @@ void psqHelper(int p, int r){
         }else{
           int q=parallelPartition(p,r);
           
-         #pragma omp parallel
-         {
-            #pragma omp task
+//         #pragma omp parallel
+  //       {
+    //        #pragma omp task
             psqHelper(p,q-1);
 
-            #pragma omp task
-	          psqHelper(q+1,r);
-          }
+      //      #pragma omp task
+	    psqHelper(q+1,r);
+
+	//    #pragma omp taskwait
+        //  }
         }  
     }    
 }
@@ -421,7 +423,7 @@ int main(int argc, char * argv[]){
     fillArrayRandom(n[i]);
     //printf("Before for array of size %d:\n", n[i]);
     //printArray(n[i]);
-    double t = sequentialQuickSort(n[i]);
+    double t = parallelQuickSort(n[i]);
     printf("%d elements sorted in %f time\n", n[i], t);
     if(checkArray(n[i])==-1){
       printf("SORT FAILED\n");
