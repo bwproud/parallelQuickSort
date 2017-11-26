@@ -183,14 +183,8 @@ int partition(int p, int r){
 void quickSortHelper(int p, int r){
     if(p<r){
         int q=partition(p,r);
-//        #pragma omp parallel
-  //       {
-    //        	#pragma omp task
-		quickSortHelper(p,q-1);
-        	
-//		#pragma omp task
-		quickSortHelper(q+1,r);
-///	}
+		    quickSortHelper(p,q-1);
+    		quickSortHelper(q+1,r);
     }    
 }
 
@@ -241,7 +235,7 @@ void parallelPrefixSum(int p, int r){
         int k = log_2(len);
         for(h=1; h<k+1;h++){
                 shift = 1<<h;
-                #pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static) private(j)
                 for(j=1; j<(len/shift)+1;j++){
                         lt[p+j*shift-1]+=lt[p+j*shift-(shift/2)-1];
                         gt[p+j*shift-1]+=gt[p+j*shift-(shift/2)-1];
@@ -250,7 +244,7 @@ void parallelPrefixSum(int p, int r){
 
         for(h=k; h>-1;h--){
                 shift = 1<<h;
-                #pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static) private(j)
                 for(j=2; j<(len/shift)+1;j++){
                         if(j%2==1){
                                 lt[p+j*shift-1]+=lt[p+j*shift-shift-1];
@@ -268,14 +262,14 @@ int parallelPartition(int p, int r){
   printf("%d: before first parallel region\n",omp_get_thread_num());
   #pragma omp parallel
   {
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(static) private(i)
     for(i=p; i<r+1; i++){
       lt[i]=0;
       gt[i]=0;
       local[i]=N[i];
     }
 
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(static) private(i)
     for(i = p; i <r; i++){
         if(N[i]<key){
             lt[i]=1;
@@ -324,7 +318,7 @@ int parallelPartition(int p, int r){
 
   #pragma omp parallel
   {
-    #pragma omp for schedule(static)
+    #pragma omp for schedule(static) private(i)
     for(i=p; i<r; i++){
         if(local[i]<key){
             int index = p+lt[i]-1;
@@ -353,7 +347,7 @@ void psqHelper(int p, int r){
             psqHelper(p,q-1);
 
             #pragma omp task
-	    psqHelper(q+1,r);
+	          psqHelper(q+1,r);
           }
         }  
     }    
