@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <omp.h>
-#include <cilk/cilk.h>
 
 #define  NMAX  75000000 
 
@@ -117,20 +116,28 @@ void parallelPrefixSum(int p, int r){
         int k = log_2(len);
         for(h=1; h<k+1;h++){
                 shift = 1<<h;
-                cilk_for (j=1; j<(len/shift)+1;j++){
+                #pragma omp parallel
+		{
+		#pragma omp for schedule(static)
+		for(j=1; j<(len/shift)+1;j++){
                         lt[p+j*shift-1]+=lt[p+j*shift-(shift/2)-1];
                         gt[p+j*shift-1]+=gt[p+j*shift-(shift/2)-1];
                 }
+		}
         }
 
         for(h=k; h>-1;h--){
                 shift = 1<<h;
-                cilk_for (j=2; j<(len/shift)+1;j++){
+                #pragma omp parallel
+                {
+		#pragma omp for schedule(static)
+		for(j=2; j<(len/shift)+1;j++){
                         if(j%2==1){
                                 lt[p+j*shift-1]+=lt[p+j*shift-shift-1];
                                 gt[p+j*shift-1]+=gt[p+j*shift-shift-1];
                         }
                 }
+		}
         }
 }
 
@@ -138,14 +145,16 @@ int parallelPartition(int p, int r){
   double key=N[r];
   int i,j;
   double temp;
-
-    cilk_for (i=p; i<r+1; i++){
+    #pragma omp parallel
+    {
+    #pragma omp for schedule(static)
+    for (i=p; i<r+1; i++){
       lt[i]=0;
       gt[i]=0;
       local[i]=N[i];
     }
-
-    cilk_for (i = p; i <r; i++){
+    #pragma omp for schedule(static)
+    for (i = p; i <r; i++){
         if(N[i]<key){
             lt[i]=1;
             gt[i]=0;
@@ -154,13 +163,17 @@ int parallelPartition(int p, int r){
             gt[i]=1;
         }
     }
-    
+    }
+
     parallelPrefixSum(p,r);
   
     int pivot = lt[r];
     N[pivot+p]=key;
 
-    cilk_for (i=p; i<r; i++){
+    #pragma omp parallel
+    {
+    #pragma omp for schedule(static)
+    for(i=p; i<r; i++){
         if(local[i]<key){
             int index = p+lt[i]-1;
             N[index]=local[i];
@@ -169,7 +182,7 @@ int parallelPartition(int p, int r){
             N[index]=local[i];
         }    
     }
-    
+    }
 
   return pivot+p;
 }
@@ -185,8 +198,11 @@ void psqHelper(int p, int r, int size){
         }else{
             q=parallelPartition(p,r);
         }
-            cilk_spawn psqHelper(p,q-1, size);
-            psqHelper(q+1,r, size);
+            #pragma omp task
+            psqHelper(p,q-1, size);
+            
+ 	    #pragma omp task
+	    psqHelper(q+1,r, size);
         }  
     }    
 }
@@ -196,13 +212,13 @@ double parallelQuickSort(int n){
     #pragma omp master
     t1 = omp_get_wtime();
     
-  //   #pragma omp parallel
-  // {
-  //   #pragma omp single nowait
-  //   {
+     #pragma omp parallel
+   {
+     #pragma omp single nowait
+     {
       psqHelper(0, n-1, n);
-  //   }
-  // }
+     }
+   }
     
     #pragma omp master
     t2 = omp_get_wtime();
