@@ -196,13 +196,7 @@ double parallelQuickSort(int n){
     #pragma omp master
     t1 = omp_get_wtime();
     
-  //   #pragma omp parallel
-  // {
-  //   #pragma omp single nowait
-  //   {
       psqHelper(0, n-1, n);
-  //   }
-  // }
     
     #pragma omp master
     t2 = omp_get_wtime();
