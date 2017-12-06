@@ -241,21 +241,33 @@ int checkArray(int n){
 }
 
 int main(int argc, char * argv[]){
-  FILE* fp = fopen("simTimes.csv","w+");
-  int len=15;
-  int n[] = {10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000,20000,200000,2000000,20000000,75000000};
+  __cilkrts_set_param("nworkers", argv[1]);
+  FILE* fp = fopen("simTimes.csv","a+");
+  int len=16;
+  int n[] = {3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049, 177147, 531441, 1594323, 4782969, 14348947, 43046721};
   int i;
   srand(getpid());
-  for(i = 0; i<len; i++){
-    fillArrayRandom(n[i]);
-    double t = parallelQuickSort(n[i]);
-    printf("%d elements sorted in %f time\n", n[i], t);
-    if(checkArray(n[i])==-1){
-      printf("SORT FAILED\n");
-    }else{
-      printf("SUCCESSFUL SORT\n");
-    }
-  }
+  if (atoi(argv[1]) == 1){
+	  for(i=0; i<len; i++){
+	  	fillArrayRandom(n[i]);
+	  	double t = sequentialQuickSort(n[i]);
+	  	fprintf(fp,"1,%d,%f\n",n[i],t);
+	  }
+   }
+  else{
+	  for(i = 0; i<len; i++){
+	    fillArrayRandom(n[i]);
+	    double t = parallelQuickSort(n[i]);
+	    int numworkers = __cilkrts_get_nworkers();
+	    printf("%d elements sorted in %f time with %d workers\n", n[i], t, numworkers);
+	    fprintf(fp,"%d,%d,%f\n",numworkers,n[i],t);
+	    if(checkArray(n[i])==-1){
+	      printf("SORT FAILED\n");
+	    }else{
+	      printf("SUCCESSFUL SORT\n");
+	    }
+	  }
+	}
   fclose(fp);
 } 
 
