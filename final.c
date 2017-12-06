@@ -10,11 +10,11 @@
 
 #define  NMAX  75000000 
 
-int *lt;
-int *gt;
-double *local;
-double *N;
-int *eq;
+double* N;
+int* lt;
+int* gt;
+int* eq;
+double* local;
 
 void init(int size){
      N =  malloc(size * sizeof(double));
@@ -103,19 +103,51 @@ void fillMostlySame(int n){
     }
 }
 
-int partition(int p, int r){
+int seqPartition(int p, int r){
   double key=N[r];
   int i=p-1;
   int j;
   double temp;
   for(j=p; j<r; j++){
-    if(N[j]<=key){
+    if(N[j]<key){
       i+=1;
       temp = N[i];
       N[i]=N[j];
       N[j]=temp;
-    }  
+    }
+  }
+  temp = N[i+1];
+  N[i+1]=N[r];
+  N[r]=temp;
+  return i+1;
+}
+
+int rPartition(p,r){
+        int random = (rand() % ((r-p) + 1))+p;
+        double temp = N[random];
+        N[random] = N[r];
+        N[r]=temp;
+        return seqPartition(p,r);
+}
+
+int partition(int p, int r){
+  double key=N[r];
+  int i=p-1;
+  int j, k = 0;
+  double temp;
+  for(j=p; j<r; j++){
+    if(N[j]<key){
+      i+=1;
+      temp = N[i];
+      N[i]=N[j];
+      N[j]=temp;
+    }else if(N[j]==key){
+    k+=1;
+    }
   } 
+  if(k==(r-p)){
+  	return -k;
+  }
   temp = N[i+1];   
   N[i+1]=N[r];
   N[r]=temp;
@@ -124,7 +156,7 @@ int partition(int p, int r){
 
 void quickSortHelper(int p, int r){
     if(p<r){
-        int q=partition(p,r);
+        int q=rPartition(p,r);
    	quickSortHelper(p,q-1);
 	quickSortHelper(q+1,r);   
     }
@@ -258,7 +290,6 @@ int randomizedPartition(p,r,size){
 	N[r]=temp;
 
 	if(r-p < 0.5*size){
-           	//printf("(%d,%d)\n",p,r);
 		return partition(p,r);
         }else{
             return parallelPartition(p,r);
@@ -307,8 +338,8 @@ int main(int argc, char * argv[]){
   __cilkrts_set_param("nworkers", argv[1]);
   int mode = atoi(argv[2]); //rand, sorted, rsorted, same
   FILE* fp = fopen("simTimes.csv","a+");
-  int len=16;
-  int n[] = {3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049, 177147, 531441, 1594323, 4782969, 14348947, 1304672111};
+  int len=10;
+  int n[] = {10, 100, 1000, 10000, 100000, 1000000, 10000000, 50000000, 100000000, 250000000};
   int i;
   srand(getpid());
   if (atoi(argv[1]) == 1){
@@ -333,7 +364,7 @@ int main(int argc, char * argv[]){
           fillMostlySame(n[i]);
       }
 	  	double t = sequentialQuickSort(n[i]);
-	  	fprintf(fp,"1,%d,%f\n",n[i],t);
+	  	fprintf(fp,"%d,1,%d,%f\n",mode,n[i],t);
 	  }
    }
   else{
@@ -360,7 +391,7 @@ int main(int argc, char * argv[]){
 	    double t = parallelQuickSort(n[i]);
 	    int numworkers = __cilkrts_get_nworkers();
 	    printf("%d elements sorted in %f time with %d workers\n", n[i], t, numworkers);
-	    fprintf(fp,"%d,%d,%f\n",numworkers,n[i],t);
+	    fprintf(fp,"%d, %d,%d,%f\n",mode,numworkers,n[i],t);
 	    if(checkArray(n[i])==-1){
 	      printf("SORT FAILED\n");
 	    }else{

@@ -1,0 +1,9 @@
+#! /bin/bash
+for value1 in {3,}
+do
+	for value2 in {2,4,8,16,32,40}
+	do
+	echo $value2 $value1
+	./final $value2 $value1 
+	done
+done
