@@ -44,6 +44,32 @@ void fillArrayRandom(int n){
     }
 }
 
+void fillSorted(int n){
+    int j;
+    N[0]=0.5;
+    for(j = 1; j<n; j++){
+        double r = N[j-1]+1;
+        N[j]=r;
+    }
+}
+
+void fillReverseSorted(int n){
+    int j;
+    N[0]=n+0.5;
+    for(j = 1; j<n; j++){
+        double r = N[j-1]-1;
+        N[j]=r;
+    }
+}
+
+void fillSame(int n){
+    int j;
+    double r = drand(0,1000);
+    for(j = 0; j<n; j++){
+        N[j]=r;
+    }
+}
+
 int partition(int p, int r){
   double key=N[r];
   int i=p-1;
