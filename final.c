@@ -10,10 +10,10 @@
 
 #define  NMAX  75000000 
 
-static double   N[NMAX];
-static int lt[NMAX];
-static int gt[NMAX];
-static double local[NMAX];
+int *lt;
+int *gt;
+double *local;
+double *N;
 
 void printArray(int n){
     int j;
@@ -244,11 +244,25 @@ int main(int argc, char * argv[]){
   __cilkrts_set_param("nworkers", argv[1]);
   FILE* fp = fopen("simTimes.csv","a+");
   int len=16;
-  int n[] = {3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049, 177147, 531441, 1594323, 4782969, 14348947, 43046721};
+  int n[] = {3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049, 177147, 531441, 1594323, 4782969, 14348947, 1304672111};
   int i;
   srand(getpid());
+
   if (atoi(argv[1]) == 1){
 	  for(i=0; i<len; i++){
+	  	if(i==0){
+	  		N =  malloc(n[i] * sizeof(double));
+	  		lt = malloc(n[i] * sizeof(int));
+	  		gt = malloc(n[i] * sizeof(int));
+	  		local = malloc(n[i] * sizeof(double));
+	  	}
+	  	else{
+	  		N = realloc(N, n[i] * sizeof(double));
+	  		lt = realloc(lt, n[i] * sizeof(int));
+	  		gt = realloc(gt, n[i] * sizeof(int));
+	  		local = realloc(local, n[i] * sizeof(double));
+	  	}
+
 	  	fillArrayRandom(n[i]);
 	  	double t = sequentialQuickSort(n[i]);
 	  	fprintf(fp,"1,%d,%f\n",n[i],t);
@@ -256,6 +270,18 @@ int main(int argc, char * argv[]){
    }
   else{
 	  for(i = 0; i<len; i++){
+	  	if(i==0){
+	  		N = malloc(n[i] * sizeof(double));
+	  		lt = malloc(n[i] * sizeof(int));
+	  		gt = malloc(n[i] * sizeof(int));
+	  		local = malloc(n[i] * sizeof(double));
+	  	}
+	  	else{
+	  		N = realloc(N, n[i] * sizeof(double));
+	  		lt = realloc(lt, n[i] * sizeof(int));
+	  		gt = realloc(gt, n[i] * sizeof(int));
+	  		local = realloc(local, n[i] * sizeof(double));
+	  	}
 	    fillArrayRandom(n[i]);
 	    double t = parallelQuickSort(n[i]);
 	    int numworkers = __cilkrts_get_nworkers();
@@ -268,6 +294,10 @@ int main(int argc, char * argv[]){
 	    }
 	  }
 	}
+  free(N);
+  free(lt);
+  free(gt);
+  free(local);
   fclose(fp);
 } 
 
