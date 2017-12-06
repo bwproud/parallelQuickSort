@@ -16,6 +16,22 @@ double *local;
 double *N;
 int *eq;
 
+void init(int size){
+     N =  malloc(size * sizeof(double));
+    lt = malloc(size * sizeof(int));
+    gt = malloc(size * sizeof(int));
+    local = malloc(size * sizeof(double));
+    eq = malloc(size * sizeof(int));
+}
+
+void reinit(int size){
+    N = realloc(N, size * sizeof(double));
+    lt = realloc(lt, size * sizeof(int));
+    gt = realloc(gt, size * sizeof(int));
+    local = realloc(local, size * sizeof(double));
+    eq = realloc(eq, size * sizeof(int));
+}
+
 void printArray(int n){
     int j;
     printf("[");
@@ -289,31 +305,33 @@ int checkArray(int n){
 
 int main(int argc, char * argv[]){
   __cilkrts_set_param("nworkers", argv[1]);
+  int mode = atoi(argv[2]); //rand, sorted, rsorted, same
   FILE* fp = fopen("simTimes.csv","a+");
   int len=16;
   int n[] = {3, 9, 27, 81, 243, 729, 2187, 6561, 19683, 59049, 177147, 531441, 1594323, 4782969, 14348947, 1304672111};
   int i;
   srand(getpid());
-
   if (atoi(argv[1]) == 1){
 	  for(i=0; i<len; i++){
 	  	if(i==0){
-	  		N =  malloc(n[i] * sizeof(double));
-	  		lt = malloc(n[i] * sizeof(int));
-	  		gt = malloc(n[i] * sizeof(int));
-	  		local = malloc(n[i] * sizeof(double));
-	  		eq = malloc(n[i] * sizeof(int));
+	  	  init(n[i]);
 	  	}
 	  	else{
-	  		N = realloc(N, n[i] * sizeof(double));
-	  		lt = realloc(lt, n[i] * sizeof(int));
-	  		gt = realloc(gt, n[i] * sizeof(int));
-	  		local = realloc(local, n[i] * sizeof(double));
-	  		eq = realloc(eq, n[i] * sizeof(int));
-
+	  		reinit(n[i]);
 	  	}
-
-	  	fillArrayRandom(n[i]);
+      switch(mode){
+        case 0:
+	  	    fillArrayRandom(n[i]);
+          break;
+        case 1:
+          fillSorted(n[i]);
+          break;
+        case 2:
+          fillReverseSorted(n[i]);
+          break;
+        case 3:
+          fillMostlySame(n[i]);
+      }
 	  	double t = sequentialQuickSort(n[i]);
 	  	fprintf(fp,"1,%d,%f\n",n[i],t);
 	  }
@@ -321,23 +339,24 @@ int main(int argc, char * argv[]){
   else{
 	  for(i = 0; i<len; i++){
 	  	if(i==0){
-	  		N = malloc(n[i] * sizeof(double));
-	  		lt = malloc(n[i] * sizeof(int));
-	  		gt = malloc(n[i] * sizeof(int));
-	  		local = malloc(n[i] * sizeof(double));
-	  		eq = malloc(n[i] * sizeof(int));
-
+        init(n[i]);
 	  	}
 	  	else{
-	  		N = realloc(N, n[i] * sizeof(double));
-	  		lt = realloc(lt, n[i] * sizeof(int));
-	  		gt = realloc(gt, n[i] * sizeof(int));
-	  		local = realloc(local, n[i] * sizeof(double));
-	  		eq = realloc(eq, n[i] * sizeof(int));
-
+        reinit(n[i]);
 	  	}
-	  	//fillSame(n[i]);
-	    fillArrayRandom(n[i]);
+	  	switch(mode){
+        case 0:
+          fillArrayRandom(n[i]);
+          break;
+        case 1:
+          fillSorted(n[i]);
+          break;
+        case 2:
+          fillReverseSorted(n[i]);
+          break;
+        case 3:
+          fillMostlySame(n[i]);
+      }
 	    double t = parallelQuickSort(n[i]);
 	    int numworkers = __cilkrts_get_nworkers();
 	    printf("%d elements sorted in %f time with %d workers\n", n[i], t, numworkers);
