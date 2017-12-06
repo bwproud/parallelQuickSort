@@ -14,6 +14,7 @@ int *lt;
 int *gt;
 double *local;
 double *N;
+int *eq;
 
 void printArray(int n){
     int j;
@@ -67,6 +68,22 @@ void fillSame(int n){
     double r = drand(0,1000);
     for(j = 0; j<n; j++){
         N[j]=r;
+    }
+}
+
+void fillMostlySame(int n){
+    int j;
+    double r = drand(0,1000);
+    for(j=0; j<n/4; j++){
+    	N[j]=r;
+    }
+    r = drand(0,1000);
+    for(j = n/4; j<(3*n/4); j++){
+        N[j]=r;
+    }
+    r = drand(0,1000);
+    for(j=(3*n/4); j<n; j++){
+    	N[j]=r;
     }
 }
 
@@ -146,7 +163,8 @@ void parallelPrefixSum(int p, int r){
                 cilk_for (j=1; j<(len/shift)+1;j++){
                         lt[p+j*shift-1]+=lt[p+j*shift-(shift/2)-1];
                         gt[p+j*shift-1]+=gt[p+j*shift-(shift/2)-1];
-                }
+                	eq[p+j*shift-1]+=eq[p+j*shift-(shift/2)-1];
+		}
         }
 
         for(h=k; h>-1;h--){
@@ -155,6 +173,7 @@ void parallelPrefixSum(int p, int r){
                         if(j%2==1){
                                 lt[p+j*shift-1]+=lt[p+j*shift-shift-1];
                                 gt[p+j*shift-1]+=gt[p+j*shift-shift-1];
+				eq[p+j*shift-1]+=eq[p+j*shift-shift-1];
                         }
                 }
         }
@@ -168,6 +187,7 @@ int parallelPartition(int p, int r){
     cilk_for (i=p; i<r+1; i++){
       lt[i]=0;
       gt[i]=0;
+      eq[i]=0;
       local[i]=N[i];
     }
 
@@ -175,29 +195,58 @@ int parallelPartition(int p, int r){
         if(N[i]<key){
             lt[i]=1;
             gt[i]=0;
-        }else{
+        }else if(N[i]>key){ 
             lt[i]=0;
             gt[i]=1;
-        }
+        }else{
+	    eq[i]=1;
+	    gt[i]=0;
+	    lt[i]=0;
+	}
     }
     
+     
     parallelPrefixSum(p,r);
-  
     int pivot = lt[r];
+    
+    if(p+eq[r] == r){
+    	return -1*(r-p);
+    } 
+    if(p+pivot == r){
+    	return -1*(r-p);
+    }
+
     N[pivot+p]=key;
 
     cilk_for (i=p; i<r; i++){
         if(local[i]<key){
             int index = p+lt[i]-1;
             N[index]=local[i];
-        }else{
-            int index = p+pivot+gt[i];
+        }else if(local[i] > key){
+            int index = p+pivot+eq[r]+gt[i];
             N[index]=local[i];
-        }    
+        }else{
+	   int index = p+pivot+eq[i];
+           N[index]=local[i];
+	}    
     }
     
 
   return pivot+p;
+}
+
+int randomizedPartition(p,r,size){
+	int random = (rand() % ((r-p) + 1))+p;
+	double temp = N[random];
+	N[random] = N[r];
+	N[r]=temp;
+
+	if(r-p < 0.5*size){
+           	//printf("(%d,%d)\n",p,r);
+		return partition(p,r);
+        }else{
+            return parallelPartition(p,r);
+        }
 }
 
 void psqHelper(int p, int r, int size){
@@ -205,13 +254,11 @@ void psqHelper(int p, int r, int size){
         if(r-p<=50){
             insertionSortHelper(p,r);
         }else{
-	int q;
-	if(r-p < 0.5*size){
-            q = partition(p,r);
-        }else{
-            q=parallelPartition(p,r);
-        }
-            cilk_spawn psqHelper(p,q-1, size);
+	    int q = randomizedPartition(p,r, size);
+	    if(q<0){
+		return;
+	    }
+	    cilk_spawn psqHelper(p,q-1, size);
             psqHelper(q+1,r, size);
         }  
     }    
@@ -255,12 +302,15 @@ int main(int argc, char * argv[]){
 	  		lt = malloc(n[i] * sizeof(int));
 	  		gt = malloc(n[i] * sizeof(int));
 	  		local = malloc(n[i] * sizeof(double));
+	  		eq = malloc(n[i] * sizeof(int));
 	  	}
 	  	else{
 	  		N = realloc(N, n[i] * sizeof(double));
 	  		lt = realloc(lt, n[i] * sizeof(int));
 	  		gt = realloc(gt, n[i] * sizeof(int));
 	  		local = realloc(local, n[i] * sizeof(double));
+	  		eq = realloc(eq, n[i] * sizeof(int));
+
 	  	}
 
 	  	fillArrayRandom(n[i]);
@@ -275,13 +325,18 @@ int main(int argc, char * argv[]){
 	  		lt = malloc(n[i] * sizeof(int));
 	  		gt = malloc(n[i] * sizeof(int));
 	  		local = malloc(n[i] * sizeof(double));
+	  		eq = malloc(n[i] * sizeof(int));
+
 	  	}
 	  	else{
 	  		N = realloc(N, n[i] * sizeof(double));
 	  		lt = realloc(lt, n[i] * sizeof(int));
 	  		gt = realloc(gt, n[i] * sizeof(int));
 	  		local = realloc(local, n[i] * sizeof(double));
+	  		eq = realloc(eq, n[i] * sizeof(int));
+
 	  	}
+	  	//fillSame(n[i]);
 	    fillArrayRandom(n[i]);
 	    double t = parallelQuickSort(n[i]);
 	    int numworkers = __cilkrts_get_nworkers();
@@ -298,6 +353,7 @@ int main(int argc, char * argv[]){
   free(lt);
   free(gt);
   free(local);
+  free(eq);
   fclose(fp);
 } 
 
